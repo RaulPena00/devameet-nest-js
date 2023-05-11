@@ -4,16 +4,30 @@ import { MessagesHelper } from "./helpers/messages.helper";
 import { RegisterDto } from 'src/user/schemas/dtos/register.dto';
 import { UserService } from '../user/schemas/user.service';
 import { UserMessagesHelper } from 'src/user/schemas/helpers/messages.helper';
+import {JwtService} from 'passport-jwt'
 
 export class AuthService{
     private logger = new Logger(AuthService.name);
 
-    constructor(private readonly userService: UserService){}
+    constructor(
+        private readonly userService: UserService,
+        private readonly jwtService: JwtService
+        ){}
 
-    login(dto: LoginDto){
+    async login(dto: LoginDto){
         this.logger.debug('login - started')
-        if(dto.login !== 'teste@teste.com' || dto.password !== 'teste@123'){
+
+        const user = await this.userService.getUserByLoginPassword(dto.login, dto.password)
+        if(user == null){
             throw new BadRequestException(MessagesHelper.AUTH_PASSWORD_OR_LOGIN_NOT_FOUND)
+        }
+
+        const   tokenPayLoad = {email: user.email, sub: user._id};
+
+        return {
+            email: user.email,
+            name: user.name,
+            token: this.jwtService.sing(tokenPayLoad, {secret: process.env.USER_JWT_SECRET_KEY}),
         }
 
         return dto;

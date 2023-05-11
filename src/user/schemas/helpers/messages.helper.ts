@@ -4,4 +4,5 @@ export const UserMessagesHelper = {
     REGISTER_EMAIL_NOT_VALID: 'Email informado  não é válido',
     REGISTER_PASSWORD_NOT_VALID: 'Senha  informada não é válida',
     REGISTER_EXIST_EMAIL_ACCOUNT: 'Já existe conta com email informado',
+    GET_USER_NOT_FOUND: 'Usuarion não encontrado'
 }
