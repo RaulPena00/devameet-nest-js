@@ -6,36 +6,74 @@ import { UserService } from 'src/user/schemas/user.service';
 import { GetMeetDto } from './dto/getmeet.dto';
 import { CreateMeetDto } from './dto/createmeet.dto';
 import { generateLink } from './helpers/linkgenerator.helper';
+import { MeetObject, MeetObjectDocument } from './schemas/meetobjects.schema';
+import { UpdateMeetDto } from './dto/updatemeetdto';
 
-@Injectable()
-export class MeetService {
-    private readonly logger = new Logger(MeetService.name);
+@Injectable() 
+export class MeetService { 
+private logger = new Logger(MeetService.name); 
 
-    constructor(
-        @InjectModel(Meet.name) private readonly model: Model<MeetDocument>,
-        private readonly userService: UserService
-    ){}
+constructor( 
+@InjectModel(Meet.name) private model: Model<MeetDocument>, 
+@InjectModel(MeetObject.name) private objectModel: Model<MeetObjectDocument>, 
+private readonly userService : UserService) { } 
 
-    async getMeetByUser(userId: String){
-        this.logger.debug('getMeetsByUser - ' + userId);
-        return await this.model.find({user: userId});
-    }
+async getMeetsByUser(userId: string) { 
+this.logger.debug('getMeetsByUser - start'); 
+return await this.model.find({ user: userId }); 
+} 
 
-    async createMeet(userId: string, dto:CreateMeetDto){
-        this.logger.debug('createMeet - ' + userId);
+async getMeetObjects(meetId: string, userId: string) { 
+this.logger.debug('getMeetObjects - start'); 
+const user = await this.userService.getUserById(userId); 
+const meet = await this.model.findOne({_id: meetId, user: user}); 
+return await this.objectModel.find({ meet }); 
+} 
 
-        const user = await this.userService.getUserById(userId);
+async create(userId: string, dto: CreateMeetDto) { 
+this.logger.debug('create - start');  
 
-        const meet = {
-            ...dto,
-            user,
-            link: generateLink()
-        }
-        const createdMeet = new this.model(meet);
-        return await createdMeet.save();
-    }
-    async deleteMeetByUser(userId: String, meetId:string){
-        this.logger.debug(`deleteMeetsByUser -  ${userId} - ${meetId}`);
-        return await this.model.find({user: userId, _id: meetId});
-    }
+const user = await this.userService.getUserById(userId); 
+const payload = { 
+...dto, 
+user, 
+link : generateLink() 
+}; 
+this.logger.debug('create - payload before save', payload); 
+
+const createdUser = new this.model(payload); 
+return createdUser.save(); 
+} 
+
+async delete(userId: string, meetId: string) { 
+this.logger.debug('delete - start'); 
+return await this.model.deleteOne({ user: userId, _id: meetId }); 
+} 
+
+async update(userId: string, meetId: string, dto : UpdateMeetDto) { 
+this.logger.debug('update - start'); 
+
+ 
+const user = await this.userService.getUserById(userId); 
+const meet = await this.model.findOne({_id: meetId, user: user}); 
+
+this.logger.debug('update - set new values on meet'); 
+meet.name = dto.name; 
+meet.color = dto.color; 
+await this.model.findByIdAndUpdate({_id: meetId}, meet); 
+
+this.logger.debug('update - delete previous objects'); 
+await this.objectModel.deleteMany({meet}); 
+
+let objectPayload; 
+this.logger.debug('update - insert new objects'); 
+for (const object of dto.objects) { 
+objectPayload = { 
+meet, 
+...object 
+}   
+
+await this.objectModel.create(objectPayload); 
+} 
+} 
 }
